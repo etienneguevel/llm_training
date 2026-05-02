@@ -43,7 +43,7 @@ def train(cfg):
     dataset = WikiDataset(cfg.train.context_length, tokenizer)
 
     # Create the loader
-    pad_token = -100  # Will be ignored by CE
+    pad_token = tokenizer(tokenizer.pad_token)["input_ids"][0]  # Will be ignored by CE
     eos_token = tokenizer(tokenizer.eos_token)["input_ids"][0]
 
     collate_fn = partial(collate_tensors, pad_token=pad_token, eos_token=eos_token)
@@ -108,6 +108,7 @@ def train(cfg):
         with torch.autocast(device, data_type, enabled=cfg.train.mixed_precision):
             logits = model(samples)
             loss = loss_fn(logits.flatten(0, 1), labels.flatten())
+
         total_loss += loss.item()
 
         loss.backward()
