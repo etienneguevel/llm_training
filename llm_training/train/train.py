@@ -48,7 +48,7 @@ def train(cfg):
 
     collate_fn = partial(collate_tensors, pad_token=pad_token, eos_token=eos_token)
 
-    loader = DataLoader(dataset, cfg.train.batch_size, True, collate_fn=collate_fn)
+    loader = DataLoader(dataset, cfg.train.batch_size, collate_fn=collate_fn)
 
     # Init the model, setup the optimizer
     model = LlmTransformer(
@@ -106,21 +106,22 @@ def train(cfg):
         token_count += token_bsz
 
         with torch.autocast(device, data_type, enabled=cfg.train.mixed_precision):
-            # Do the forward pass
             logits = model(samples)
-            # Do the backward pass
             loss = loss_fn(logits.flatten(0, 1), labels.flatten())
-            total_loss += loss.item()
+        total_loss += loss.item()
 
         loss.backward()
         tqdm_bar.update(token_bsz)
         tqdm_bar.set_postfix({"num_tokens": token_bsz, "token_count": token_count, "loss": log_loss})
-        del loss, logits, samples, labels
-        torch.mps.empty_cache()
+        del loss, logits, samples, labels, batch
+        if device == "cuda":
+            torch.cuda.empty_cache()
+        elif device == "mps":
+            torch.mps.empty_cache()
 
         if token_count >= cfg.train.global_batch_size:
             optimizer.step()
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
 
             token_count_total += token_count
             token_count = 0
