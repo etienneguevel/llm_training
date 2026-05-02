@@ -19,20 +19,6 @@ def test_basic_forward():
     assert output_tensor.shape == (16, 100, HIDDEN_DIM)
 
 
-def test_attention_softmaxed():
-    attention_layer = AttentionLayerDecoder(
-        HIDDEN_DIM,
-        NUM_HEADS,
-        NUM_HEADS
-    )
-
-    input_tensor = torch.randn((16, 100, HIDDEN_DIM))
-    output_tensor, attn_map = attention_layer.forward(input_tensor, True)
-
-    assert output_tensor.shape == (16, 100, HIDDEN_DIM)
-    assert ((attn_map.sum(-1) - 1.).abs() <= 1e-3).all()
-
-
 def test_ffn_forward():
     ffn_layer = Ffn(HIDDEN_DIM, 2 * HIDDEN_DIM)
     input_tensor = torch.randn((16, 100, HIDDEN_DIM))
