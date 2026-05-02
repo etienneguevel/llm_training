@@ -1,0 +1,21 @@
+data:
+  datasets:
+    - wiki
+  
+model:
+  dim: 1024
+  num_heads: 32
+  kv_heads: 8
+  ffn_dim: 4096
+  num_layers: 24
+  tied_embeddings: True
+  tokenizer: "HuggingFaceTB/SmolLM3-3B"
+
+train:
+  lr: 2e-4
+  context_length: 1000
+  batch_size: 1
+  global_batch_size: 40000
+  tokens_aim: 120000
+  mixed_precision: False
+  save_path: logs/test_run
