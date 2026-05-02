@@ -47,7 +47,6 @@ def train(cfg):
     eos_token = tokenizer(tokenizer.eos_token)["input_ids"][0]
 
     collate_fn = partial(collate_tensors, pad_token=pad_token, eos_token=eos_token)
-
     loader = DataLoader(dataset, cfg.train.batch_size, collate_fn=collate_fn)
 
     # Init the model, setup the optimizer
@@ -56,7 +55,7 @@ def train(cfg):
         cfg.model.num_heads,
         cfg.model.kv_heads,
         cfg.model.ffn_dim,
-        tokenizer.vocab_size,
+        len(tokenizer),
         cfg.model.num_layers,
         cfg.model.tied_embeddings,
     )
@@ -107,6 +106,14 @@ def train(cfg):
 
         with torch.autocast(device, data_type, enabled=cfg.train.mixed_precision):
             logits = model(samples)
+            V = logits.shape[-1]
+            print("logits:", logits.shape, "vocab head:", V)
+            print("samples min/max:", samples.min().item(), samples.max().item())
+            print("labels  min/max:", labels.min().item(), labels.max().item())
+            print("tokenizer.vocab_size:", tokenizer.vocab_size, "len(tokenizer):", len(tokenizer))
+            assert samples.max().item() < model.embedding.voc_size  # embedding rows
+            assert labels.max().item() < V                   # head out_features
+            assert (labels.min().item() == -100) or (labels.min().item() >= 0)
             loss = loss_fn(logits.flatten(0, 1), labels.flatten())
 
         total_loss += loss.item()
