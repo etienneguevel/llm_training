@@ -30,20 +30,21 @@ class TiedUnembeddingLayer(nn.Module):
 
 class ConvEmbedding(nn.Module):
 
-    def __init__(self, num_pixels: int, dim: int, in_channels: int = 3):
-        self.num_pixels = num_pixels
+    def __init__(self, emb_size: int, dim: int, in_channels: int = 3):
+        super().__init__()
+        self.emb_size = emb_size
         self.dim = dim
 
         self.weights = nn.Conv2d(
             in_channels,
             dim,
-            num_pixels,
-            num_pixels,
+            emb_size,
+            emb_size,
         )
 
     def forward(self, x: torch.Tensor):
 
-        x = self.weights(x) # bs, n1, n2, dim
-        x = x.flatten(start_dim=1, end_dim=2) # bs, n1*n2, dim
+        x = self.weights(x) # bs, dim, n1, n2
+        x = x.flatten(start_dim=-2, end_dim=-1).transpose(-2, -1) # bs, n1*n2, dim
 
         return x

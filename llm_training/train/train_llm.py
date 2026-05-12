@@ -1,5 +1,4 @@
 import os
-from argparse import ArgumentParser
 from functools import partial
 
 import torch
@@ -10,31 +9,15 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 
 from llm_training import BASE_DIR
-from llm_training.data.datacollator import collate_tensors
+from llm_training.data.datacollator import collate_tensors, collate_tensors_jagged
 from llm_training.data.datasets import WikiDataset
 from llm_training.models.llm import LlmTransformer
-
-
-def get_args():
-
-    args_parser = ArgumentParser()
-    args_parser.add_argument(
-        "--config-file",
-        type=str,
-        help="Path to the config file to use for the training.",
-        default="",
-    )
-
-    return args_parser.parse_args()
+from llm_training.train.utils import setup_model_resuming, get_args, get_device
 
 
 def train(cfg):
     # Choose the device to train on
-    device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else ("mps" if torch.mps.is_available() else "cpu")
-    )
+    device = get_device()
 
     # Create the tokenizer
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.tokenizer)
@@ -45,8 +28,14 @@ def train(cfg):
     # Create the loader
     pad_token = tokenizer(tokenizer.pad_token)["input_ids"][0]  # Will be ignored by CE
     eos_token = tokenizer(tokenizer.eos_token)["input_ids"][0]
+    voc_size = len(tokenizer)
 
-    collate_fn = partial(collate_tensors, pad_token=pad_token, eos_token=eos_token)
+    if cfg.train.datacollator == "jagged":
+        collate_fn = partial(collate_tensors_jagged, eos_token=eos_token)
+
+    else:
+        collate_fn = partial(collate_tensors, pad_token=pad_token, eos_token=eos_token)
+
     loader = DataLoader(dataset, cfg.train.batch_size, collate_fn=collate_fn)
 
     # Init the model, setup the optimizer
@@ -55,7 +44,7 @@ def train(cfg):
         cfg.model.num_heads,
         cfg.model.kv_heads,
         cfg.model.ffn_dim,
-        len(tokenizer),
+        voc_size,
         cfg.model.num_layers,
         cfg.model.tied_embeddings,
     )
@@ -65,24 +54,7 @@ def train(cfg):
     loss_fn = torch.nn.CrossEntropyLoss()
 
     # Setup the saving dirs
-    saving_dir = cfg.train.save_path
-    if os.path.isdir(saving_dir):
-        print(f"Found an existing folder at {saving_dir}")
-        ckpts = [i for i in os.listdir(saving_dir) if i.endswith(".pt")]
-        if len(ckpts) > 0:
-            ckpts.sort(key=lambda el: int(el.replace(".pt", "")), reverse=True)
-            last_ckpt = ckpts[0]
-            print(
-                f"Found checkpoints, loading from {os.path.join(saving_dir, last_ckpt)}"
-            )
-
-            state_dict = torch.load(os.path.join(saving_dir, last_ckpt))
-            model.load_state_dict(state_dict["model"])
-
-            optimizer.load_state_dict(state_dict["optimizer"])
-
-    else:
-        os.makedirs(saving_dir)
+    setup_model_resuming(model, optimizer, cfg.train.save_path)
 
     # Setup the scaler for mixed_precision
     data_type = torch.bfloat16 if cfg.train.mixed_precision else torch.float32
@@ -106,15 +78,7 @@ def train(cfg):
 
         with torch.autocast(device, data_type, enabled=cfg.train.mixed_precision):
             logits = model(samples)
-            V = logits.shape[-1]
-            print("logits:", logits.shape, "vocab head:", V)
-            print("samples min/max:", samples.min().item(), samples.max().item())
-            print("labels  min/max:", labels.min().item(), labels.max().item())
-            print("tokenizer.vocab_size:", tokenizer.vocab_size, "len(tokenizer):", len(tokenizer))
-            assert samples.max().item() < model.embedding.voc_size  # embedding rows
-            assert labels.max().item() < V                   # head out_features
-            assert (labels.min().item() == -100) or (labels.min().item() >= 0)
-            loss = loss_fn(logits.flatten(0, 1), labels.flatten())
+            loss = loss_fn(logits.view(-1, voc_size), labels.view(-1))
 
         total_loss += loss.item()
 

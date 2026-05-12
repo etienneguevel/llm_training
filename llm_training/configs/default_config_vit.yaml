@@ -1,0 +1,21 @@
+data:
+  path: data/pokemon_images
+  
+model:
+  dim: 1024
+  num_heads: 32
+  kv_heads: 8
+  ffn_dim: 4096
+  num_layers: 16
+  in_channels: 3
+  emb_size: 16
+
+
+train:
+  lr: 2e-4
+  context_length: 1000
+  batch_size: 8
+  mixed_precision: False
+  save_path: logs/test_run_vit
+  resize_shape: 256
+  croping_shape: 224

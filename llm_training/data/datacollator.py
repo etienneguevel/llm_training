@@ -11,11 +11,20 @@ def collate_tensors(tokens: list[torch.Tensor], eos_token: int, pad_token: int):
 
     return samples, labels
 
+def collate_tensors_jagged(tokens: list[torch.Tensor], eos_token: int):
+
+    samples = torch.nested.nested_tensor(tokens, layout=torch.jagged)
+    labels = torch.nested.nested_tensor([torch.cat(
+        (t[1:], torch.tensor([eos_token]))
+    ) for t in tokens], layout=torch.jagged)
+
+    return samples, labels
+
 def collate_tensors_stacked(tokens: list[torch.Tensor], eos_token: int):
     labels = torch.cat(
         [torch.cat([t[1:], torch.tensor([eos_token])]) for t in tokens]
     )
     samples = torch.cat(tokens)
-    mask = torch.cat([torch.tensor([i] * t.size(0)) for i, t in enumerate(tokens)])
+    indices = torch.tensor( [t.size(0) for t in tokens])
 
-    return samples, labels, mask
+    return samples, labels, indices

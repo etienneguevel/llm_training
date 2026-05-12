@@ -1,2 +1,2 @@
-from torch.utils.data import DataLoader
-
+import torch
+from torchvision.datasets import ImageFolder

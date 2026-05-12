@@ -19,3 +19,4 @@ train:
   tokens_aim: 120000
   mixed_precision: False
   save_path: logs/test_run
+  datacollator: normal

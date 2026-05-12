@@ -2,9 +2,21 @@ import torch
 import torch.nn as nn
 
 
-class AttentionLayerDecoder(nn.Module):
+def make_attention_mask(indices):
+    n = indices.sum().item()
+    mask = torch.zeros((n, n))
+    idx = 0
+    for i in indices:
+        mask[idx:idx+i, idx:idx+i] = 1
+        idx += i
+    
+    mask = mask.triu().T
+    return mask
 
-    def __init__(self, dim: int, num_heads: int, kv_heads: int):
+
+class AttentionLayer(nn.Module):
+
+    def __init__(self, dim: int, num_heads: int, kv_heads: int, decoder: bool):
         super().__init__()
 
         assert (dim % num_heads) == 0 # assert that the number of heads divide the dim
@@ -15,6 +27,7 @@ class AttentionLayerDecoder(nn.Module):
         self.kv_heads = kv_heads
         self.dim = dim
         self.head_dim = dim // num_heads
+        self.decoder = decoder
 
         self.norm = nn.RMSNorm(dim)
 
@@ -24,7 +37,7 @@ class AttentionLayerDecoder(nn.Module):
 
         self.Wo = nn.Linear(dim, dim)
 
-    def forward(self, tokens: torch.Tensor, return_attention_map: bool = False):
+    def forward(self, tokens: torch.Tensor):
         # tokens: bs (batch_size), n (context_length), d (dim)
         tokens = self.norm(tokens)
 
@@ -33,7 +46,14 @@ class AttentionLayerDecoder(nn.Module):
         v = self.V(tokens).unflatten(-1, (self.kv_heads, self.head_dim)).permute(0, 2, 1, 3) # bs, kv_heads, n, head_dim
 
         # Compute the attention
-        a = nn.functional.scaled_dot_product_attention(q, k, v, is_causal=True, enable_gqa=True)
+        if tokens.is_nested:
+            k = torch.cat([k for _ in range(self.kv_ratio)], dim=1)
+            v = torch.cat([v for _ in range(self.kv_ratio)], dim=1)
+            a = nn.functional.scaled_dot_product_attention(q, k, v, is_causal=self.decoder)
+
+        else:
+            a = nn.functional.scaled_dot_product_attention(q, k, v, is_causal=self.decoder, enable_gqa=True)
+
 
         # Do the output projection
         a = a.transpose(1, 2).flatten(start_dim=2) # bs, n, d
@@ -66,14 +86,15 @@ class Ffn(nn.Module):
 class TransformerLayer(nn.Module):
     def __init__(
             self, 
-            dim,
-            ffn_dim,
-            num_heads,
-            kv_heads,
+            dim: int,
+            ffn_dim: int,
+            num_heads: int,
+            kv_heads: int,
+            decoder:bool,
         ):
         super().__init__()
 
-        self.attention_block = AttentionLayerDecoder(dim, num_heads, kv_heads)
+        self.attention_block = AttentionLayer(dim, num_heads, kv_heads, decoder=decoder)
         self.ffn_block = Ffn(dim, ffn_dim)
 
     def forward(self, tokens: torch.Tensor):
