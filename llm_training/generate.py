@@ -40,7 +40,7 @@ def main():
         
         assert (dp * tp) == dist.get_global_size()
 
-    device = torch.device("cuda")
+    device = torch.device(f"cuda:{dist.get_global_rank()}")
 
     model = LlmTransformer.init_from_config(cfg).to(device)
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.tokenizer)
