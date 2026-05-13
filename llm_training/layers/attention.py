@@ -179,7 +179,7 @@ class TPMultiHeadAttention(nn.Module):
         # Make a buffer to register the KV cache
         self.register_buffer(
             "kv_cache",
-            torch.zeros((max_bsz, max_length, 2 * self.dim_heads * kv_heads))
+            torch.zeros((max_bsz, max_length, 2 * self.dim_heads * self.kv_heads))
         )
 
 
