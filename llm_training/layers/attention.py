@@ -188,7 +188,6 @@ class TPMultiHeadAttention(nn.Module):
         # normalize the input
         bsz, n, _ = x.size()
         x = self.norm(x)
-        mask = create_mask(x.size(-2))
 
         q = self.q(x) # bsz, n, d
         q = q.unflatten(-1, (self.num_heads, self.dim_heads)) # bsz, n, heads, dim_heads
@@ -207,10 +206,11 @@ class TPMultiHeadAttention(nn.Module):
         # Compute the attention
         q = apply_rotation(q, self.max_length, self.dim_heads, pos+n, pos)
         k = apply_rotation(k, self.max_length, self.dim_heads, pos+n)
-        attn = (q @ k.transpose(-2, -1) / torch.tensor([self.dim_heads]).sqrt())
+        attn = (q @ k.transpose(-2, -1)) / (self.dim_heads**0.5)
 
         # Mask the attention if necessary
         if (self.decoder) & (n > 1):
+            mask = create_mask(x.size(-2)).to(x.device)
             attn = attn.masked_fill(mask, -torch.inf)
 
         attn = attn.softmax(-1) # (bsz, heads, n, n)
