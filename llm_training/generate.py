@@ -42,6 +42,8 @@ def main():
     model = LlmTransformer.init_from_config(cfg)
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.tokenizer)
 
+    print(model)
+
     # Open the text
     if os.path.exists(args.txt):
         with open(args.txt) as f:
@@ -52,11 +54,11 @@ def main():
 
     tokens = tokenizer(txt, return_tensors="pt")["input_ids"]
 
-
     # Generate the new tokens
     output_tokens = model.generate(tokens, 20)
+    print(f"shape of the outpu_tokens {output_tokens.shape} {output_tokens}")
     output_txt = tokenizer.decode(output_tokens)
-
+    
     print(output_txt)
 
     return output_txt
