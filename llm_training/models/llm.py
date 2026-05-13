@@ -66,7 +66,6 @@ class LlmTransformer(nn.Module):
         all_tokens = tokens
 
         for _ in pbar:
-            print(all_tokens)
             _, n = tokens.size()
             logits = self.forward(tokens, pos)
             new = logits[:, -1:, :].argmax(-1) # (bs, 1)

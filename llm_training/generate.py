@@ -45,7 +45,8 @@ def main():
     model = LlmTransformer.init_from_config(cfg).to(device)
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.tokenizer)
 
-    print(model)
+    if dist.is_main_rank():
+        print(model)
 
     # Open the text
     if os.path.exists(args.txt):
@@ -56,15 +57,14 @@ def main():
         txt = args.txt
 
     tokens = tokenizer(txt, return_tensors="pt")["input_ids"]
-    print(f"shape of the input_tokens {tokens.shape} {tokens}")
 
     # Generate the new tokens
     tokens = tokens.to(device)
     output_tokens = model.generate(tokens, 20)
-    print(f"shape of the outpu_tokens {output_tokens.shape} {output_tokens}")
     output_txt = tokenizer.decode(output_tokens)
 
-    print(output_txt)
+    if dist.is_main_rank():
+        print(output_txt)
 
     return output_txt
 
