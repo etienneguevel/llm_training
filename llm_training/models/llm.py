@@ -5,6 +5,7 @@ from llm_training.layers.embeddings import EmbeddingLayer, TiedUnembeddingLayer
 from llm_training.layers.attention import TransformerLayer, TPTransformerLayer
 
 from tqdm import tqdm
+from transformers import AutoTokenizer
 
 
 class LlmTransformer(nn.Module):
@@ -79,3 +80,24 @@ class LlmTransformer(nn.Module):
             tokens = new
 
         return all_tokens
+    
+
+    @classmethod
+    def init_from_config(cls, cfg):
+        tokenizer = AutoTokenizer.from_pretrained(cfg.model.tokenizer)
+        eos_token = tokenizer(tokenizer.eos_token)["input_ids"][0]
+        voc_size = len(tokenizer)
+
+        return cls(
+            cfg.model.dim,
+            cfg.model.num_heads,
+            cfg.model.kv_heads,
+            cfg.model.ffn_dim,
+            voc_size,
+            cfg.model.num_layers,
+            eos_token,
+            cfg.model.max_length,
+            cfg.model.max_bsz,
+            cfg.model.tied_embeddings,
+            cfg.distributed.tp_size
+        )

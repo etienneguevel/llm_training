@@ -9,6 +9,8 @@ model:
   ffn_dim: 4096
   num_layers: 24
   tied_embeddings: True
+  max_length: 512
+  max_bsz: 4
   tokenizer: "HuggingFaceTB/SmolLM3-3B"
 
 train:
@@ -20,3 +22,7 @@ train:
   mixed_precision: False
   save_path: logs/test_run
   datacollator: normal
+
+distributed:
+  dp_size:
+  tp_size:
