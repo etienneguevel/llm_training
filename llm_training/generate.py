@@ -1,6 +1,7 @@
 import os
 from argparse import ArgumentParser
 
+import torch
 from omegaconf import OmegaConf
 from transformers import AutoTokenizer
 
@@ -39,7 +40,9 @@ def main():
         
         assert (dp * tp) == dist.get_global_size()
 
-    model = LlmTransformer.init_from_config(cfg)
+    device = torch.device("cuda")
+
+    model = LlmTransformer.init_from_config(cfg).to(device)
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.tokenizer)
 
     print(model)
@@ -56,6 +59,7 @@ def main():
     print(f"shape of the input_tokens {tokens.shape} {tokens}")
 
     # Generate the new tokens
+    tokens = tokens.to(device)
     output_tokens = model.generate(tokens, 20)
     print(f"shape of the outpu_tokens {output_tokens.shape} {output_tokens}")
     output_txt = tokenizer.decode(output_tokens)
