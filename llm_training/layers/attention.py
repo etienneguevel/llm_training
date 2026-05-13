@@ -186,7 +186,7 @@ class TPMultiHeadAttention(nn.Module):
     def forward(self, x: torch.Tensor, pos: int = 0) -> torch.Tensor:
         # x.shape : bsz, n, d 
         # normalize the input
-        _, n, _ = x.size()
+        bsz, n, _ = x.size()
         x = self.norm(x)
         mask = create_mask(x.size(-2))
 
