@@ -77,7 +77,7 @@ class LlmTransformer(nn.Module):
                 break
             
             pos = n
-            all_tokens = torch.cat([tokens, new], dim=-1) # (bs, n+1)
+            all_tokens = torch.cat([all_tokens, new], dim=-1) # (bs, n+1)
             tokens = new
 
         return all_tokens
