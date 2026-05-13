@@ -32,7 +32,7 @@ def main():
     args = get_args()
     cfg = OmegaConf.load(args.config_file)
 
-    if (cfg.tp is not None) | (cfg.dp is not None):
+    if (cfg.distributed.tp is not None) | (cfg.distributed.dp is not None):
         dist.enable()
         assert (cfg.dp * cfg.tp) == dist.get_global_size()
 
