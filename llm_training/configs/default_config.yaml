@@ -25,4 +25,4 @@ train:
 
 distributed:
   dp_size:
-  tp_size:
+  tp_size: 2
