@@ -50,7 +50,10 @@ def main():
     else:
         txt = args.txt
 
+    print(f"text used is {txt}")
     tokens = tokenizer(txt, return_tensors="pt")["input_ids"].squeeze(0)
+
+    print(f"shape of the tokens given to the model: {tokens.shape}")
 
     # Generate the new tokens
     output_tokens = model.generate(tokens, 20)
