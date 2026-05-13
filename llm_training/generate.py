@@ -53,12 +53,13 @@ def main():
         txt = args.txt
 
     tokens = tokenizer(txt, return_tensors="pt")["input_ids"]
+    print(f"shape of the input_tokens {tokens.shape} {tokens}")
 
     # Generate the new tokens
     output_tokens = model.generate(tokens, 20)
     print(f"shape of the outpu_tokens {output_tokens.shape} {output_tokens}")
     output_txt = tokenizer.decode(output_tokens)
-    
+
     print(output_txt)
 
     return output_txt
