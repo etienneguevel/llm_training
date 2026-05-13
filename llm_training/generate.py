@@ -32,9 +32,12 @@ def main():
     args = get_args()
     cfg = OmegaConf.load(args.config_file)
 
-    if (cfg.distributed.tp is not None) | (cfg.distributed.dp is not None):
+    if ((tp:=cfg.distributed.tp_size) is not None) | ((dp:=cfg.distributed.dp_size) is not None):
         dist.enable()
-        assert (cfg.dp * cfg.tp) == dist.get_global_size()
+        dp = 1 if dp is None else dp
+        tp = 1 if tp is None else tp
+        
+        assert (dp * tp) == dist.get_global_size()
 
     model = LlmTransformer.init_from_config(cfg)
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.tokenizer)
